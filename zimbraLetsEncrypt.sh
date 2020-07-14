@@ -1,19 +1,20 @@
 #############################################################
-# Script for generate and install Lets Enrypt certificate.  #
+# Script for generate and install LetsEncrypt certificate.  #
 #                                                           #
 # By: João Pires                                            #
 #############################################################
 
 #!/bin/bash
-mkdir /opt/zimbra/backup/ssl/
+mkdir /opt/zimbra/backup/ssl/ || echo "Directory does exist"
 tar -cvf /opt/zimbra/backup/ssl/letsencrypt_$(date +%d_%m_%y).tgz /etc/letsencrypt/live
 tar -cvf /opt/zimbra/backup/ssl/zimbra_$(date +%d_%m_%y).tgz /opt/zimbra/ssl
 su - zimbra -c "zmproxyctl stop"
 su - zimbra -c "zmmailboxdctl stop"
-/root/letsencrypt/letsencrypt-auto certonly --standalone -d $1
+domain=$1
+/root/letsencrypt/letsencrypt-auto certonly --standalone -d $domain
 
 #renew command
-cd /etc/letsencrypt/live/$1 && \
+cd /etc/letsencrypt/live/$domain && \
 echo "-----BEGIN CERTIFICATE-----
 MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/
 MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
@@ -34,10 +35,13 @@ R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5
 JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo
 Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ
 -----END CERTIFICATE-----" >> chain.pem
-cp -f /etc/letsencrypt/live/$1/* /opt/zimbra/ssl/letsencrypt
+cp -f /etc/letsencrypt/live/$domain/* /opt/zimbra/ssl/letsencrypt
 chown -R zimbra:zimbra /opt/zimbra/ssl/letsencrypt
 mv /opt/zimbra/ssl/zimbra/commercial/commercial.key /opt/zimbra/ssl/zimbra/commercial/commercial.key.bkp 
-cp /opt/zimbra/ssl/letsencrypt/privkey.pem /opt/zimbra/ssl/zimbra/commercial/commercial.key
-su - zimbra -c "/opt/zimbra/bin/zmcertmgr deploycrt comm /opt/zimbra/ssl/letsencrypt/cert.pem /opt/zimbra/ssl/letsencrypt/chain.pem"
+cp /opt/zimbra/ssl/letsencrypt/privkey.pem /opt/zimbra/ssl/zimbra/commercial/commercial.key 
+chown zimbra:zimbra /opt/zimbra/ssl/zimbra/commercial/commercial.key
+/opt/zimbra/bin/zmcertmgr deploycrt comm /opt/zimbra/ssl/letsencrypt/cert.pem /opt/zimbra/ssl/letsencrypt/chain.pem || su - zimbra -c "/opt/zimbra/bin/zmcertmgr deploycrt comm /opt/zimbra/ssl/letsencrypt/cert.pem /opt/zimbra/ssl/letsencrypt/chain.pem"
 su - zimbra -c "zmproxyctl start"
 su - zimbra -c "zmmailboxdctl start"
+
+
